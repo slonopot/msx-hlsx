@@ -5,6 +5,8 @@ That's a mod of the original hls.js player that allows to choose audio and subti
 
 This plugin was tested with a stream with multiple quality options and subtitle tracks.
 
+No subtitles on UWP.
+
 # Usage
 
 `https://slonopot.github.io/msx-hlsx/hlsx.html?url={URL}`
@@ -43,4 +45,4 @@ For example:
 
 [Media Station X](https://msx.benzac.de/info/)
 
-[The original plugin](https://msx.benzac.de/wiki/index.php?title=HTML5X_Plugin)
+[The original plugin](https://msx.benzac.de/wiki/index.php?title=Video/Audio_Plugin)
