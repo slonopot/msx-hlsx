@@ -46,3 +46,5 @@ For example:
 [Media Station X](https://msx.benzac.de/info/)
 
 [The original plugin](https://msx.benzac.de/wiki/index.php?title=Video/Audio_Plugin)
+
+[hls.js](https://github.com/video-dev/hls.js/)
