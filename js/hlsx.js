@@ -141,7 +141,7 @@ function HlsPlayer() {
     var useProxy = false;
     var showRelatedContent = false;
     var hasRelatedContent = false;
-    var defaultAudioTrackLanguage = null;
+    var defaultAudioTrackName = null;
     var defaultSubtitleTrackIndex = -1;
     var audioTrackIndicator = null;
     var subtitleTrackIndicator = null;
@@ -212,8 +212,7 @@ function HlsPlayer() {
         var index = indexTrack != null ? indexTrack.index : -1;
         var track = indexTrack != null ? indexTrack.track : null;
         if (index >= 0 && track != null) {
-            return (TVXTools.isFullStr(track.name) ? track.name : "Audio Track " + (index + 1)) +
-                    (TVXTools.isFullStr(track.lang) ? " (" + track.lang.toUpperCase() + ")" : "");
+            return (TVXTools.isFullStr(track.name) ? track.name : "Audio Track " + (index + 1));
         }
         return hasAudioTracks() ? "None" : "Original";
     };
@@ -221,35 +220,44 @@ function HlsPlayer() {
         var index = indexTrack != null ? indexTrack.index : -1;
         var track = indexTrack != null ? indexTrack.track : null;
         if (index >= 0 && track != null) {
-            return (TVXTools.isFullStr(track.name) ? track.name : "Subtitles " + (index + 1)) +
-                    (TVXTools.isFullStr(track.lang) ? " (" + track.lang.toUpperCase() + ")" : "");
+            return (TVXTools.isFullStr(track.name) ? track.name : "Subtitles " + (index + 1));
         }
         return "Off";
     };
     var storeAudioTrack = function(track) {
-        if (track != null && TVXTools.isFullStr(track.lang)) {
-            TVXServices.storage.set(PROPERTY_PREFIX + "audiotrack", track.lang);
+        if (track != null && TVXTools.isFullStr(track.name)) {
+            TVXServices.storage.set(PROPERTY_PREFIX + "audiotrack", track.name);
         } else {
             TVXServices.storage.remove(PROPERTY_PREFIX + "audiotrack");
         }
     };
+    var getStoredAudioTrack = function() {
+        return TVXServices.storage.get(PROPERTY_PREFIX + "audiotrack")
+    }
     var storeSubtitleTrack = function(track) {
-        if (track != null && TVXTools.isFullStr(track.lang)) {
-            TVXServices.storage.set(PROPERTY_PREFIX + "subtitle", track.lang);
+        if (track != null && TVXTools.isFullStr(track.name)) {
+            TVXServices.storage.set(PROPERTY_PREFIX + "subtitle", track.name);
         } else {
             TVXServices.storage.remove(PROPERTY_PREFIX + "subtitle");
         }
     };
+    var getStoredSubtitleTrack = function() {
+        return TVXServices.storage.get(PROPERTY_PREFIX + "subtitle")
+    }
     var setupAudioTrackIndicator = function(track) {
-        if (track != null && TVXTools.isFullStr(track.lang)) {
-            audioTrackIndicator = "{ico:msx-white:audiotrack} " + track.lang.toUpperCase();
+        if (track != null && TVXTools.isFullStr(track.name)) {
+            var name = track.name.toUpperCase();
+            if (name.length > 8) name = name.substr(0, 8)
+            audioTrackIndicator = "{ico:msx-white:audiotrack} " + name;
         } else {
             audioTrackIndicator = null;
         }
     };
     var setupSubtitleTrackIndicator = function(track) {
-        if (track != null && TVXTools.isFullStr(track.lang)) {
-            subtitleTrackIndicator = "{ico:msx-white:subtitles} " + track.lang.toUpperCase();
+        if (track != null && TVXTools.isFullStr(track.name)) {
+            var name = track.name.toUpperCase();
+            if (name.length > 8) name = name.substr(0, 8)
+            subtitleTrackIndicator = "{ico:msx-white:subtitles} " + track.name.toUpperCase();
         } else {
             subtitleTrackIndicator = null;
         }
@@ -282,7 +290,6 @@ function HlsPlayer() {
 
                 var opts = {}
                 if (track.name) opts['name'] = track.name;
-                if (track.lang) opts['language'] = track.lang;
 
                 hls.setAudioOption(opts);
             }
@@ -305,13 +312,11 @@ function HlsPlayer() {
                 if (index == trackIndex) {
                     selectedTrack = track;
                     
-                    //var opts = {}
-                    //if (track.name) opts['name'] = track.name;
-                    //if (track.lang) opts['language'] = track.lang;
+                    var opts = {}
+                    if (track.name) opts['name'] = track.name;
+                    hls.setSubtitleOption(opts);
 
-                    //hls.setSubtitleOption(opts); //didn't select anything for my stream for some reason
-
-                    hls.subtitleTrackController.subtitleTrack = index;
+                    //hls.subtitleTrackController.subtitleTrack = index;
                 }
             });
         }
@@ -327,12 +332,25 @@ function HlsPlayer() {
     var getDefaultAudioTrackIndex = function() {
         var trackIndex = -1;
         var fallbackTrackIndex = -1;
+        var storedTrackName = getStoredAudioTrack();
         foreachAudioTrack(function(index, track) {
             if (fallbackTrackIndex == -1) {
                 //Fallback to first audio track
                 fallbackTrackIndex = index;
             }
-            if (defaultAudioTrackLanguage != null && defaultAudioTrackLanguage === track.lang) {
+            if (storedTrackName === track.name) {
+                trackIndex = index;
+                return true;//break
+            }
+        });
+        return trackIndex >= 0 ? trackIndex : fallbackTrackIndex;
+    };
+    var getDefaultSubtitleTrackIndex = function() {
+        var trackIndex = -1;
+        var fallbackTrackIndex = -1;
+        var storedTrackName = getStoredSubtitleTrack();
+        foreachSubtitleTrack(function(index, track) {
+            if (storedTrackName === track.name) {
                 trackIndex = index;
                 return true;//break
             }
@@ -363,9 +381,9 @@ function HlsPlayer() {
         return getSelectedSubtitleIndexTrack() != null;
     };
     var setupAudioTracks = function(info) {
-        defaultAudioTrackLanguage = TVXPropertyTools.getFullStr(info, PROPERTY_PREFIX + "audiotrack", TVXServices.storage.get(PROPERTY_PREFIX + "audiotrack"));
-        if (defaultAudioTrackLanguage == "default") {
-            defaultAudioTrackLanguage = null;//Select first audio track
+        defaultAudioTrackName = TVXPropertyTools.getFullStr(info, PROPERTY_PREFIX + "audiotrack", TVXServices.storage.get(PROPERTY_PREFIX + "audiotrack"));
+        if (defaultAudioTrackName == "default") {
+            defaultAudioTrackName = null;//Select first audio track
         }
     };
     var processSubtitleTrackCues = function(cues) {
@@ -560,12 +578,12 @@ function HlsPlayer() {
                     label: "Subtitles",
                     extensionLabel: getSubtitleTrackLabel(selectedSubtitleIndexTrack),
                     action: "[player:commit:message:focus:subtitle|panel:request:player:subtitle]"
-//                }, {
-//                    focus: currentOptionsFocus == "settings",
-//                    id: "settings",
-//                    icon: "settings",
-//                    label: "Settings",
-//                    action: "[player:commit:message:focus:settings|panel:request:player:settings]"
+            //    }, {
+            //        focus: currentOptionsFocus == "settings",
+            //        id: "settings",
+            //        icon: "settings",
+            //        label: "Settings",
+            //        action: "[player:commit:message:focus:settings|panel:request:player:settings]"
                 }, {
                     display: showFullscreen,
                     offset: "0,0.25,0,0",
@@ -647,6 +665,8 @@ function HlsPlayer() {
         if (player != null && !ready) {
             ready = true;
             TVXVideoPlugin.debug("HLS video ready");
+            selectAudioTrack(getDefaultAudioTrackIndex(), false, false);
+            selectSubtitleTrack(getDefaultSubtitleTrackIndex(), false, true);
             TVXVideoPlugin.applyVolume();
             TVXVideoPlugin.stopLoading();
             TVXVideoPlugin.startPlayback(true);//Accelerated start
