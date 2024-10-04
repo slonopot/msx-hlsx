@@ -298,19 +298,24 @@ function HlsPlayer() {
 
     var selectSubtitleTrack = function(trackIndex, store, apply) {
         var selectedTrack = null;
-        foreachSubtitleTrack(function(index, track) {
-            if (index == trackIndex) {
-                selectedTrack = track;
+        if (trackIndex === -1) {
+            hls.subtitleTrackController.subtitleTrack = -1;
+        } else {
+            foreachSubtitleTrack(function(index, track) {
+                if (index == trackIndex) {
+                    selectedTrack = track;
+                    
+                    //var opts = {}
+                    //if (track.name) opts['name'] = track.name;
+                    //if (track.lang) opts['language'] = track.lang;
 
-                //var opts = {}
-                //if (track.name) opts['name'] = track.name;
-                //if (track.lang) opts['language'] = track.lang;
+                    //hls.setSubtitleOption(opts); //didn't select anything for my stream for some reason
 
-                //hls.setSubtitleOption(opts); //didn't select anything for my stream for some reason
+                    hls.subtitleTrackController.subtitleTrack = index;
+                }
+            });
+        }
 
-                hls.subtitleTrackController.subtitleTrack = trackIndex;
-            }
-        });
         setupSubtitleTrackIndicator(selectedTrack);
         if (store === true) {
             storeSubtitleTrack(selectedTrack);
