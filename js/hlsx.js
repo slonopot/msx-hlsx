@@ -168,6 +168,9 @@ function HlsPlayer() {
     var hasTextTracks = function() {
         return hls != null && hls.subtitleTrackController != null && hls.subtitleTrackController.subtitleTracks != null && hls.subtitleTrackController.subtitleTracks.length > 0;
     };
+    var hasQualityLevels = function () {
+        return hls != null && hls.capLevelController != null && hls.levels.length > 0;
+    }
     var foreachAudioTrack = function(callback) {
         if (hasAudioTracks() && typeof callback == "function") {
             var tracks = hls.audioTrackController.audioTracks;
@@ -193,11 +196,26 @@ function HlsPlayer() {
             }
         }
     };
+    var foreachQualityLevel = function(callback) {
+        if (hasQualityLevels() && typeof callback == "function") {
+            var levels = hls.levels;
+            var length = hls.levels.length;
+            for (var i = 0; i < length; i++) {
+                var level = levels[i];
+                if (callback(i, level) === true) {
+                    break;
+                }
+            }
+        }
+    };
     var isAudioTrackSelected = function(track) {
         return track != null && hls.audioTrackController.audioTrack === track.id;
     };
     var isSubtitleTrackSelected = function(track) {
         return track != null && hls.subtitleTrackController.subtitleTrack === track.id;
+    };
+    var isQualityLevelSelected = function(level) {
+        return level != null && getStoredQualityLevel() == level.width.toString();
     };
     var createIndexTrack = function(index, track) {
         if (index >= 0 && track != null) {
@@ -224,6 +242,14 @@ function HlsPlayer() {
         }
         return "Off";
     };
+    var getQualityLevelLabel = function(indexLevel) {
+        var index = indexLevel != null ? indexLevel.index : -1;
+        var track = indexLevel != null ? indexLevel.track : null;
+        if (index >= 0 && track != null) {
+            return indexLevel.track.width + "x" + indexLevel.track.height;
+        }
+        return "Auto";
+    };
     var storeAudioTrack = function(track) {
         if (track != null && TVXTools.isFullStr(track.name)) {
             TVXServices.storage.set(PROPERTY_PREFIX + "audiotrack", track.name);
@@ -243,6 +269,16 @@ function HlsPlayer() {
     };
     var getStoredSubtitleTrack = function() {
         return TVXServices.storage.get(PROPERTY_PREFIX + "subtitle")
+    }
+    var storeQualityLevel = function(level) {
+        if (level != null && level.width != null && TVXTools.isFullStr(level.width.toString())) {
+            TVXServices.storage.set(PROPERTY_PREFIX + "qualityLevel", level.width);
+        } else {
+            TVXServices.storage.remove(PROPERTY_PREFIX + "qualityLevel");
+        }
+    };
+    var getStoredQualityLevel = function() {
+        return TVXServices.storage.get(PROPERTY_PREFIX + "qualityLevel")
     }
     var setupAudioTrackIndicator = function(track) {
         if (track != null && TVXTools.isFullStr(track.name)) {
@@ -329,6 +365,24 @@ function HlsPlayer() {
             applyIndicators();
         }
     };
+    var selectQualityLevel = function(trackIndex, store, apply) {
+        var selectedLevel = null;
+        if (trackIndex === -1) {
+            hls.autoLevelCapping = 99;
+            hls.currentLevel = hls.levels.length - 1
+        } else {
+            foreachQualityLevel(function(index, level) {
+                if (index == trackIndex) {
+                    selectedLevel = level;
+                    hls.autoLevelCapping = index;
+                    hls.currentLevel = index
+                }
+            });
+        }
+        if (store === true) {
+            storeQualityLevel(selectedLevel);
+        }
+    };
     var getDefaultAudioTrackIndex = function() {
         var trackIndex = -1;
         var fallbackTrackIndex = -1;
@@ -357,6 +411,18 @@ function HlsPlayer() {
         });
         return trackIndex >= 0 ? trackIndex : fallbackTrackIndex;
     };
+    var getDefaultQualityLevelIndex = function() {
+        var levelIndex = -1;
+        var fallbackLevelIndex = -1;
+        var storedQualityLevel = getStoredQualityLevel();
+        foreachQualityLevel(function(index, track) {
+            if (storedQualityLevel === track.width.toString()) {
+                levelIndex = index;
+                return true;//break
+            }
+        });
+        return levelIndex >= 0 ? levelIndex : fallbackLevelIndex;
+    };
     var getSelectedAudioIndexTrack = function() {
         var indexTrack = null;
         foreachAudioTrack(function(index, track) {
@@ -376,6 +442,16 @@ function HlsPlayer() {
             }
         });
         return indexTrack;
+    };
+    var getSelectedQualityIndexLevel = function() {
+        var indexLevel = null;
+        foreachQualityLevel(function(index, level) {
+            if (isQualityLevelSelected(level)) {
+                indexLevel = createIndexTrack(index, level);
+                return true;//break
+            }
+        });
+        return indexLevel;
     };
     var hasSelectedSubtitleTrack = function() {
         return getSelectedSubtitleIndexTrack() != null;
@@ -535,7 +611,7 @@ function HlsPlayer() {
         };
     };
     var createSubtitleTracksPanel = function() {
-        var items = [createTrackItem("subtitle", -1, getSubtitleTrackLabel(null), !hasSelectedSubtitleTrack())];
+        var items = [createTrackItem("subtitle", -1, "Off", !hasSelectedSubtitleTrack())];
         foreachSubtitleTrack(function(index, track) {
             items.push(createTrackItem("subtitle", index, getSubtitleTrackLabel(createIndexTrack(index, track)), isSubtitleTrackSelected(track)));
         });
@@ -551,9 +627,27 @@ function HlsPlayer() {
             items: items
         };
     };
+    var createQualityLevelPanel = function() {
+        var items = [createTrackItem("quality", -1, getQualityLevelLabel(null), isQualityLevelSelected(null))];
+        foreachQualityLevel(function(index, level) {
+            items.push(createTrackItem("quality", index, getQualityLevelLabel(createIndexTrack(index, level)), isQualityLevelSelected(level)));
+        });
+        return {
+            cache: false,
+            reuse: false,
+            headline: "Quality",
+            template: {
+                enumerate: false,
+                type: "control",
+                layout: "0,0,8,1"
+            },
+            items: items
+        };
+    };
     var createOptionsPanel = function() {
         var selectedAudioIndexTrack = getSelectedAudioIndexTrack();
         var selectedSubtitleIndexTrack = getSelectedSubtitleIndexTrack();
+        var selectedQualityLevel = getSelectedQualityIndexLevel();
         var showFullscreen = isFullscreenSupported() && TVXVideoPlugin.isFullscreenEnabled(player);
         return {
             cache: false,
@@ -578,13 +672,22 @@ function HlsPlayer() {
                     label: "Subtitles",
                     extensionLabel: getSubtitleTrackLabel(selectedSubtitleIndexTrack),
                     action: "[player:commit:message:focus:subtitle|panel:request:player:subtitle]"
-            //    }, {
+                }, {
+                    focus: currentOptionsFocus == "quality",
+                    id: "quality",
+                    icon: "high-quality",
+                    label: "Quality",
+                    extensionLabel: getQualityLevelLabel(selectedQualityLevel),
+                    action: "[player:commit:message:focus:quality|panel:request:player:quality]"
+                },
+            //  {
             //        focus: currentOptionsFocus == "settings",
             //        id: "settings",
             //        icon: "settings",
             //        label: "Settings",
             //        action: "[player:commit:message:focus:settings|panel:request:player:settings]"
-                }, {
+            //    }, 
+                {
                     display: showFullscreen,
                     offset: "0,0.25,0,0",
                     focus: currentOptionsFocus == "fullscreen",
@@ -615,6 +718,9 @@ function HlsPlayer() {
             } else if (message.indexOf("subtitle:") == 0) {
                 TVXVideoPlugin.executeAction("cleanup");
                 selectSubtitleTrack(TVXTools.strToNum(message.substr(9), -1), true, true);
+            } else if (message.indexOf("quality:") == 0) {
+                TVXVideoPlugin.executeAction("cleanup");
+                selectQualityLevel(TVXTools.strToNum(message.substr(8), -1), true, true);
             } else if (message == "fullscreen") {
                 TVXVideoPlugin.executeAction("cleanup");
                 TVXVideoPlugin.requestFullscreen(player);
@@ -635,6 +741,8 @@ function HlsPlayer() {
                 return createAudioTracksPanel();
             } else if (dataId == "subtitle") {
                 return createSubtitleTracksPanel();
+            } else if (dataId == "quality") {
+                return createQualityLevelPanel();
             } else if (dataId == "settings") {
                 return createSettingsPanel();
             }
@@ -667,10 +775,13 @@ function HlsPlayer() {
             TVXVideoPlugin.debug("HLS video ready");
             selectAudioTrack(getDefaultAudioTrackIndex(), false, false);
             selectSubtitleTrack(getDefaultSubtitleTrackIndex(), false, true);
+            selectQualityLevel(getDefaultQualityLevelIndex(), false, true);
             TVXVideoPlugin.applyVolume();
             TVXVideoPlugin.stopLoading();
             TVXVideoPlugin.startPlayback(true);//Accelerated start
         }
+    };
+    var onManifestLoaded = function(event, data) {
     };
     var getErrorText = function(code) {
         if (code == 1) {
@@ -755,11 +866,12 @@ function HlsPlayer() {
 
                 if (Hls.isSupported()) {
                     hls = new Hls({
-                      renderTextTracksNatively: true
+                      renderTextTracksNatively: true,
                     });
 
                     hls.loadSource(url);
                     hls.attachMedia(player);
+                    hls.on(Hls.Events.MANIFEST_LOADED, onManifestLoaded);
                     handleErrors();
                 } else {
                     player.src = url;
