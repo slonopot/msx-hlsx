@@ -326,7 +326,7 @@ function HlsPlayer() {
 
                 var opts = {}
                 if (track.name) opts['name'] = track.name;
-
+                //TVXVideoPlugin.debug("Selecting audio track: " + JSON.stringify(opts));
                 hls.setAudioOption(opts);
             }
         });
@@ -350,6 +350,7 @@ function HlsPlayer() {
                     
                     var opts = {}
                     if (track.name) opts['name'] = track.name;
+                    //TVXVideoPlugin.debug("Selecting subtitles track: " + JSON.stringify(opts));
                     hls.setSubtitleOption(opts);
 
                     //hls.subtitleTrackController.subtitleTrack = index;
@@ -373,6 +374,7 @@ function HlsPlayer() {
         } else {
             foreachQualityLevel(function(index, level) {
                 if (index == trackIndex) {
+                    //TVXVideoPlugin.debug("Selecting quality cap: " + JSON.stringify(level) + '/' + index);
                     selectedLevel = level;
                     hls.autoLevelCapping = index;
                     hls.currentLevel = index
@@ -773,15 +775,18 @@ function HlsPlayer() {
         if (player != null && !ready) {
             ready = true;
             TVXVideoPlugin.debug("HLS video ready");
-            selectAudioTrack(getDefaultAudioTrackIndex(), false, false);
+            // selectAudioTrack(getDefaultAudioTrackIndex(), false, false);
             selectSubtitleTrack(getDefaultSubtitleTrackIndex(), false, true);
-            selectQualityLevel(getDefaultQualityLevelIndex(), false, true);
+            // selectQualityLevel(getDefaultQualityLevelIndex(), false, true);
             TVXVideoPlugin.applyVolume();
             TVXVideoPlugin.stopLoading();
             TVXVideoPlugin.startPlayback(true);//Accelerated start
         }
     };
     var onManifestLoaded = function(event, data) {
+        selectAudioTrack(getDefaultAudioTrackIndex(), false, false);
+        //selectSubtitleTrack(getDefaultSubtitleTrackIndex(), false, true);
+        selectQualityLevel(getDefaultQualityLevelIndex(), false, true);
     };
     var getErrorText = function(code) {
         if (code == 1) {
