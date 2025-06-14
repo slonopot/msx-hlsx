@@ -10,126 +10,6 @@ function HlsPlayer() {
     var ready = false;
     var ended = false;
 
-    //Additions
-
-    var subtitleStylesStoragePrefix = 'subtitlestyles:'
-
-    var applySubtitleStyles = function () {
-        while (subtitles.classList.length > 0)
-            subtitles.classList.remove(subtitles.classList.item(0));
-
-        while (overlay.classList.length > 0)
-            overlay.classList.remove(overlay.classList.item(0));
-
-        var margin = TVXServices.storage.get(subtitleStylesStoragePrefix + 'margin')
-        if (margin) overlay.classList.add(margin)
-
-        var background = TVXServices.storage.get(subtitleStylesStoragePrefix + 'background')
-        if (background) subtitles.classList.add(background)
-
-        var font = TVXServices.storage.get(subtitleStylesStoragePrefix + 'font')
-        if (font) subtitles.classList.add(font)
-
-        var size = TVXServices.storage.get(subtitleStylesStoragePrefix + 'size')
-        if (size) subtitles.classList.add(size)
-    }
-
-    var handleSettings = function (message) {
-        var values = message.split(':');
-        if (values.length < 3) return
-        var setting = values[1];
-        var value = values[2];
-        if (value == 'off') TVXServices.storage.remove(subtitleStylesStoragePrefix + setting)
-        else TVXServices.storage.set(subtitleStylesStoragePrefix + setting, value)
-    }
-
-    var createSettingsPanel = function() {
-        var pages = [];
-
-        var configs = {
-            'Margin': {config: 'margin', classPrefix: 'm-'},
-            'Size': {config: 'size', classPrefix: 'f-'},
-            'Background': {config: 'background', classPrefix: 'b-'}
-        }
-
-        for (var [headline, val] of Object.entries(configs)) {
-
-            var items = [];
-
-            for (var i of Array(11).keys())
-                items.push({
-                    layout: [i % 8, Math.floor(i / 8), i == 10 ? 2 : 1, 1].join(','),
-                    label: i == 0 ? 'Off' : i + '0%',
-                    action: "player:commit:message:settings:" + val['config']  + ":" + (i == 0 ? 'off' : val['classPrefix'] + i)
-                })
-
-            pages.push({
-                headline: headline,
-                items: items
-            })
-        }
-
-        items = []
-
-        var fonts = {
-            'Thin': 'roboto-thin',
-            'Light': 'roboto-light',
-            'Regular': 'roboto-regular',
-            'Medium': 'roboto-medium',
-            'Bold': 'roboto-bold',
-            'Black': 'roboto-black',
-
-            'Thin Italic': 'roboto-thin-italic',
-            'Light Italic': 'roboto-light-italic',
-            'Regular Italic': 'roboto-regular-italic',
-            'Medium Italic': 'roboto-medium-italic',
-            'Bold Italic': 'roboto-bold-italic',
-            'Black Italic': 'roboto-black-italic'
-        }
-
-        for (var [i, [label, val]] of Object.entries(Object.entries(fonts)))
-            items.push({
-                layout: [Math.floor(i / 6) * 4, i % 6, 4, 1].join(','),
-                label: label,
-                action: "player:commit:message:settings:font:" + val
-            })
-
-        pages.push({
-            headline: 'Font',
-            items: items
-        })
-
-        var result = {
-            cache: false,
-            reuse: false,
-            headline: "Subtitles Settings",
-            type: 'list',
-            pages: pages
-        };
-        return result
-    };
-
-    var replaceText = function(text) {
-        subtitles.innerText = text;
-    };
-
-    var showText = function() {
-        subtitles.classList.remove('hidden');
-    };
-
-    var hideText = function() {
-        subtitles.classList.add('hidden');
-    };
-
-    var cueEnter = function() {
-        replaceText(this.text);
-        showText();
-    };
-
-    var cueExit = function() {
-        hideText();
-    };
-
     //--------------------------------------------------------------------------
     //Audio & Subtitle Tracks
     //Merged from HTML5X
@@ -729,7 +609,6 @@ function HlsPlayer() {
             } else if (message.indexOf("settings:") == 0) {
                 //TVXVideoPlugin.executeAction("cleanup");
                 handleSettings(message)
-                applySubtitleStyles()
             } else {
                 TVXVideoPlugin.warn("Unknown plugin message: '" + message + "'");
             }
@@ -745,8 +624,6 @@ function HlsPlayer() {
                 return createSubtitleTracksPanel();
             } else if (dataId == "quality") {
                 return createQualityLevelPanel();
-            } else if (dataId == "settings") {
-                return createSettingsPanel();
             }
         }
         return null;
@@ -866,8 +743,6 @@ function HlsPlayer() {
             var url = TVXServices.urlParams.get("url");
             if (TVXTools.isFullStr(url)) {
                 TVXVideoPlugin.startLoading();
-
-                applySubtitleStyles();
 
                 if (Hls.isSupported()) {
                     hls = new Hls({
