@@ -665,6 +665,15 @@ function HlsPlayer() {
         //selectSubtitleTrack(getDefaultSubtitleTrackIndex(), false, true);
         selectQualityLevel(getDefaultQualityLevelIndex(), false, true);
     };
+    var onBufferAppended = function(event, data) {
+        if (data.type === 'video' && player.buffered.length > 0) {
+			const start = player.buffered.start(0);
+			if (start > 0.5 && player.currentTime < start) {
+			  player.currentTime = start;
+			  player.play();
+			}
+		}
+    };
     var getErrorText = function(code) {
         if (code == 1) {
             //The fetching of the associated resource was aborted by the user's request.
@@ -752,6 +761,7 @@ function HlsPlayer() {
                     hls.loadSource(url);
                     hls.attachMedia(player);
                     hls.on(Hls.Events.MANIFEST_LOADED, onManifestLoaded);
+					hls.on(Hls.Events.BUFFER_APPENDED, onBufferAppended);
                     handleErrors();
                 } else {
                     player.src = url;
