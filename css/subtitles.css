@@ -1,3 +1,7 @@
+::cue {
+	font-family: "Arial", serif;
+}
+
 #overlay {
     display: grid;
     justify-items: center;
